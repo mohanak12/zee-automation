@@ -14,9 +14,9 @@ import java.util.Date;
  */
 public class DocumentUploadWithNoIds {
 
-    static String userName ;
-    static String userPassword ;
-    static String serverUrl ;
+    static String userName;
+    static String userPassword;
+    static String serverUrl;
 
     public static void main(String asd[]) throws IOException {
 
@@ -34,6 +34,8 @@ public class DocumentUploadWithNoIds {
         Long testcaseTreeId = createTestcaseTree(releaseId, httpClient);
         Long testcase = createTestcase(testcaseTreeId, releaseId, httpClient);
         Long cycleId = createCycle(releaseId, httpClient);
+        Long cyclePhaseId = updateCyclePhase(cycleId, testcaseTreeId, releaseId, httpClient);
+        assignCyclePhaseToCreator(cyclePhaseId, httpClient);
 
         //uploadAttachment(url, asp[2], asp[3], asp[4], httpClient);
 
@@ -79,43 +81,47 @@ public class DocumentUploadWithNoIds {
     private static long createCycle(Long releaseId, HttpClient httpClient) throws IOException {
         HttpPost postRequest = new HttpPost(serverUrl + "/flex/services/rest/latest/cycle");
         Cycle cycle = new Cycle().setName("Automation-Cycle").setReleaseId(releaseId)
-                .setStartDate(System.currentTimeMillis()).setEndDate(System.currentTimeMillis());
+                .setStartDate(System.currentTimeMillis()).setEndDate(System.currentTimeMillis() + + (1000 * 60 * 60 * 24 * 7));
         return getObjectId(cycle, postRequest, httpClient);
 
     }
 
 
-    /**
     private static long updateCyclePhase(Long cycleId, Long testcaseTreeId, Long releaseId, HttpClient httpClient) throws IOException {
-
         HttpPost postRequest = new HttpPost(serverUrl + "/flex/services/rest/latest/cycle/" + cycleId + "/phase");
-        Cycle cycle = new Cycle().setName("Automation-Cycle").setReleaseId(releaseId)
-                .setStartDate(System.currentTimeMillis()).setEndDate(System.currentTimeMillis());
-        return getObjectId(cycle, postRequest, httpClient);
-
+        CyclePhase cyclePhase = new CyclePhase().setCycleId(cycleId).setFreeForm(false).
+                setStartDate(System.currentTimeMillis() + (1000 * 60 * 60 * 24 * 1)).
+                setEndDate(System.currentTimeMillis() + (1000 * 60 * 60 * 24 * 2)).setName("Automation-Phase")
+                .setTcrCatalogTreeId(testcaseTreeId);
+        return getObjectId(cyclePhase, postRequest, httpClient);
     }
 
-    private static long createExecution() throws IOException {
-
-        HttpPost postRequest = new HttpPost(serverUrl + "/flex/services/rest/latest/cycle");
-        Cycle cycle = new Cycle().setName("Automation-Cycle").setReleaseId(releaseId)
-                .setStartDate(System.currentTimeMillis()).setEndDate(System.currentTimeMillis());
-        return getObjectId(cycle, postRequest, httpClient);
-
-
+    private static void assignCyclePhaseToCreator(Long cyclePhaseId, HttpClient httpClient) throws IOException {
+        HttpPost postRequest = new HttpPost(serverUrl + "/flex/services/rest/latest/assignmenttree/" + cyclePhaseId + "/assign");
+        getObjectId(null, postRequest, httpClient);
+        System.out.println("Successfully assigned phase " + cyclePhaseId);
     }
-     **/
 
+
+//    private static long createExecution() throws IOException {
+//        HttpPost postRequest = new HttpPost(serverUrl + "/flex/services/rest/latest/cycle");
+//        Cycle cycle = new Cycle().setName("Automation-Cycle").setReleaseId(releaseId)
+//                .setStartDate(System.currentTimeMillis()).setEndDate(System.currentTimeMillis());
+//        return getObjectId(cycle, postRequest, httpClient);
+//    }
 
 
     private static <X extends IJson> Long getObjectId(X obj,
+
                                                       HttpPost postRequest, HttpClient httpClient) throws IOException {
         Gson gson = new Gson();
-        StringEntity input = new StringEntity(gson.toJson(obj));
-
-        input.setContentType("application/json");
+        if (obj != null){
+            StringEntity input = new StringEntity(gson.toJson(obj));
+            input.setContentType("application/json");
+            postRequest.setEntity(input);
+        }
         postRequest.setHeader("Authorization", getAuthorization(userName, userPassword));
-        postRequest.setEntity(input);
+
 
         HttpResponse response = httpClient.execute(postRequest);
 
@@ -133,9 +139,15 @@ public class DocumentUploadWithNoIds {
             System.out.println(output);
             totalOutput.append(output);
         }
-        X responseProject = (X) gson.fromJson(totalOutput.toString() , obj.getClass());
-        System.out.println( obj.getClass() + " created successfully with id " + responseProject.getId());
-        return responseProject.getId();
+        if (obj != null){
+            X responseProject = (X) gson.fromJson(totalOutput.toString(), obj.getClass());
+            System.out.println(obj.getClass() + " created successfully with id " + responseProject.getId());
+            return responseProject.getId();
+        }
+        else{
+            System.out.println("operation successfully completed");
+            return null;
+        }
     }
 
 
@@ -214,13 +226,11 @@ public class DocumentUploadWithNoIds {
      **/
 
 
-
     private static String getAuthorization(String userName, String password) {
         String auth = userName + ":" + password;
         byte[] encodedAuth = java.util.Base64.getEncoder().encode(auth.getBytes(Charset.forName("US-ASCII")));
         return "Basic " + new String(encodedAuth);
     }
-
 
 
     interface IJson {
@@ -270,10 +280,12 @@ public class DocumentUploadWithNoIds {
         public Long getId() {
             return id;
         }
+
         Project setStartDate(long startDate) {
             this.startDate = startDate;
             return this;
         }
+
         Project setName(String name) {
             this.name = name;
             return this;
@@ -318,7 +330,7 @@ public class DocumentUploadWithNoIds {
         }
     }
 
-    private static class TestcaseTree implements IJson,  Serializable {
+    private static class TestcaseTree implements IJson, Serializable {
         String name;
         Long releaseId;
         Long id;
@@ -327,6 +339,7 @@ public class DocumentUploadWithNoIds {
         public Long getId() {
             return id;
         }
+
         TestcaseTree setReleaseId(Long releaseId) {
             this.releaseId = releaseId;
             return this;
@@ -337,13 +350,13 @@ public class DocumentUploadWithNoIds {
             return this;
         }
 
-         TestcaseTree setType(String type) {
+        TestcaseTree setType(String type) {
             this.type = type;
             return this;
         }
     }
 
-    private static class Cycle implements IJson,  Serializable {
+    private static class Cycle implements IJson, Serializable {
         String name;
         Long releaseId;
         Long id;
@@ -363,6 +376,7 @@ public class DocumentUploadWithNoIds {
         public Long getId() {
             return id;
         }
+
         Cycle setReleaseId(Long releaseId) {
             this.releaseId = releaseId;
             return this;
@@ -375,15 +389,19 @@ public class DocumentUploadWithNoIds {
 
     }
 
-    private static class CyclePhase implements IJson,  Serializable {
+    private static class CyclePhase implements IJson, Serializable {
+
+        Long cycleId;
+        long endDate;
+        boolean freeForm;
+        String name;
         Long releaseId;
+        long startDate;
         Long tcrCatalogTreeId;
         Long id;
-        long startDate;
-        long endDate;
 
-        public CyclePhase setStartDate(long startDate) {
-            this.startDate = startDate;
+        public CyclePhase setCycleId(Long cycleId) {
+            this.cycleId = cycleId;
             return this;
         }
 
@@ -392,16 +410,35 @@ public class DocumentUploadWithNoIds {
             return this;
         }
 
-        public Long getId() {
-            return id;
-        }
-        CyclePhase setReleaseId(Long releaseId) {
-            this.releaseId = releaseId;
+        public CyclePhase setFreeForm(boolean freeForm) {
+            this.freeForm = freeForm;
             return this;
         }
 
 
+        public CyclePhase setName(String name) {
+            this.name = name;
+            return this;
+        }
 
+        public CyclePhase setReleaseId(Long releaseId) {
+            this.releaseId = releaseId;
+            return this;
+        }
+
+        public CyclePhase setStartDate(long startDate) {
+            this.startDate = startDate;
+            return this;
+        }
+
+        public CyclePhase setTcrCatalogTreeId(Long tcrCatalogTreeId) {
+            this.tcrCatalogTreeId = tcrCatalogTreeId;
+            return this;
+        }
+
+        public Long getId() {
+            return id;
+        }
     }
 
     private static class Testcase implements IJson, Serializable {
