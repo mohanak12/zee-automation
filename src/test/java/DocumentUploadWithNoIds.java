@@ -44,7 +44,9 @@ public class DocumentUploadWithNoIds {
     //create testcase tree
     private static long createProject(HttpClient httpClient) throws IOException {
         HttpPost postRequest = new HttpPost(serverUrl + "/flex/services/rest/latest/project");
-        Project project = new Project().setName("1-Automation-Project").setStartDate(System.currentTimeMillis());
+        Project project = new Project().setName("1-Automation-Project")
+                .setStartDate(System.currentTimeMillis())
+                .setDashboardUrl("Test URL");
         return getObjectId(project, postRequest, httpClient);
     }
 
@@ -276,6 +278,13 @@ public class DocumentUploadWithNoIds {
         String name;
         long startDate;
         Long id;
+
+        public Project setDashboardUrl(String dashboardUrl) {
+            this.dashboardUrl = dashboardUrl;
+            return this;
+        }
+
+        String dashboardUrl;
 
         public Long getId() {
             return id;
